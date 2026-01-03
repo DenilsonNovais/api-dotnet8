@@ -4,11 +4,11 @@ namespace ApiDotNet8.Domain.Entities;
 
 public class Todo
 {
-    public Guid Id { get; private set;}
-    public string? Title { get; private set;}
-    public bool Completed { get; private set;}
+    public Guid Id { get; private set; }
+    public string Title { get; private set; } = null!;
+    public bool Completed { get; private set; }
 
-    protected Todo() {}
+    protected Todo() { }
 
     public Todo(string title)
     {

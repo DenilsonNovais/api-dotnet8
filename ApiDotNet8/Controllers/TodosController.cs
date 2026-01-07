@@ -1,8 +1,6 @@
 using ApiDotNet8.Application.DTOs.Todo;
-using ApiDotNet8.Domain.Entities;
-using ApiDotNet8.Infrastructure.Data;
+using ApiDotNet8.Application.Services.Todo;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace ApiDotNet8.Controllers;
 
@@ -10,70 +8,44 @@ namespace ApiDotNet8.Controllers;
 [Route("todos")]
 public class TodosController : ControllerBase
 {
-    private readonly AppDbContext _context;
+    private readonly ITodoService _service;
 
-    public TodosController(AppDbContext context)
+    public TodosController(ITodoService service)
     {
-        _context = context;
+        _service = service;
     }
 
-    // POST /todos
     [HttpPost]
     public async Task<ActionResult<TodoResponse>> Create(CreateTodoRequest request)
     {
-        var todo = new Todo(request.Title);
-        _context.Todos.Add(todo);
-        await _context.SaveChangesAsync();
-
-        return CreatedAtAction(nameof(GetById), new { id = todo.Id },
-            new TodoResponse(todo.Id, todo.Title, todo.Completed));
+        var result = await _service.CreateAsync(request);
+        return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
     }
 
-    // GET /todos
     [HttpGet]
     public async Task<ActionResult<IEnumerable<TodoResponse>>> GetAll()
     {
-        var todos = await _context.Todos
-            .AsNoTracking()
-            .Select(t => new TodoResponse(t.Id, t.Title, t.Completed))
-            .ToListAsync();
-
-        return Ok(todos);
+        return Ok(await _service.GetAllAsync());
     }
 
-    // GET /todos/{id}
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<TodoResponse>> GetById(Guid id)
     {
-        var todo = await _context.Todos.FindAsync(id);
-        if (todo is null) return NotFound();
-
-        return Ok(new TodoResponse(todo.Id, todo.Title, todo.Completed));
+        var todo = await _service.GetByIdAsync(id);
+        return todo is null ? NotFound() : Ok(todo);
     }
 
-    // PUT /todos/{id}
-    [HttpPut("{id:guid}")]
+    [HttpPut("{id:guid}/complete")]
     public async Task<IActionResult> Complete(Guid id)
     {
-        var todo = await _context.Todos.FindAsync(id);
-        if (todo is null) return NotFound();
-
-        todo.Complete();
-        await _context.SaveChangesAsync();
-
-        return NoContent();
+        var success = await _service.CompleteAsync(id);
+        return success ? NoContent() : NotFound();
     }
 
-    // DELETE /todos/{id}
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id)
     {
-        var todo = await _context.Todos.FindAsync(id);
-        if (todo is null) return NotFound();
-
-        _context.Todos.Remove(todo);
-        await _context.SaveChangesAsync();
-
-        return NoContent();
+        var success = await _service.DeleteAsync(id);
+        return success ? NoContent() : NotFound();
     }
 }
